@@ -9,7 +9,7 @@ TERRAFORM_WS_NAME = os.environ.get('ANSIBLE_TF_WS_NAME', 'default')
 
 def _extract_dict(attrs, key):
     out = {}
-    for k in attrs.keys():
+    for k in list(attrs.keys()):
         match = re.match(r"^" + key + r"\.(.*)", k)
         if not match or match.group(1) == "%":
             continue
@@ -21,7 +21,7 @@ def _extract_list(attrs, key):
     out = []
 
     length_key = key + ".#"
-    if length_key not in attrs.keys():
+    if length_key not in list(attrs.keys()):
         return []
 
     length = int(attrs[length_key])
@@ -43,13 +43,13 @@ def _init_group(children=None, hosts=None, vars=None):
 def _add_host(inventory, hostname, groups, host_vars):
     inventory["_meta"]["hostvars"][hostname] = host_vars
     for group in groups:
-        if group not in inventory.keys():
+        if group not in list(inventory.keys()):
             inventory[group] = _init_group(hosts=[hostname])
         elif hostname not in inventory[group]:
             inventory[group]["hosts"].append(hostname)
 
 def _add_group(inventory, group_name, children, group_vars):
-    if group_name not in inventory.keys():
+    if group_name not in list(inventory.keys()):
         inventory[group_name] = _init_group(children=children, vars=group_vars)
     else:
         # Start out with support for only one "group" with a given name
@@ -84,7 +84,7 @@ def _handle_group(attrs, inventory):
 
 def _walk_state(tfstate, inventory):
     for module in tfstate["modules"]:
-        for resource in module["resources"].values():
+        for resource in list(module["resources"].values()):
             if not resource["type"].startswith("ansible_"):
                 continue
 
