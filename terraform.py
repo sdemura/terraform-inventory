@@ -1,11 +1,12 @@
-#! /usr/bin/env python2
+#! /usr/bin/env python3
 
 import sys, json, os, re
 from subprocess import Popen, PIPE
 
-TERRAFORM_PATH = os.environ.get('ANSIBLE_TF_BIN', 'terraform')
-TERRAFORM_DIR = os.environ.get('ANSIBLE_TF_DIR', os.getcwd())
-TERRAFORM_WS_NAME = os.environ.get('ANSIBLE_TF_WS_NAME', 'default')
+TERRAFORM_PATH = os.environ.get("ANSIBLE_TF_BIN", "terraform")
+TERRAFORM_DIR = os.environ.get("ANSIBLE_TF_DIR", os.getcwd())
+TERRAFORM_WS_NAME = os.environ.get("ANSIBLE_TF_WS_NAME", "default")
+
 
 def _extract_dict(attrs, key):
     out = {}
@@ -16,6 +17,7 @@ def _extract_dict(attrs, key):
 
         out[match.group(1)] = attrs[k]
     return out
+
 
 def _extract_list(attrs, key):
     out = []
@@ -33,12 +35,14 @@ def _extract_list(attrs, key):
 
     return out
 
+
 def _init_group(children=None, hosts=None, vars=None):
     return {
         "hosts": [] if hosts is None else hosts,
         "vars": {} if vars is None else vars,
-        "children": [] if children is None else children
+        "children": [] if children is None else children,
     }
+
 
 def _add_host(inventory, hostname, groups, host_vars):
     inventory["_meta"]["hostvars"][hostname] = host_vars
@@ -47,6 +51,7 @@ def _add_host(inventory, hostname, groups, host_vars):
             inventory[group] = _init_group(hosts=[hostname])
         elif hostname not in inventory[group]:
             inventory[group]["hosts"].append(hostname)
+
 
 def _add_group(inventory, group_name, children, group_vars):
     if group_name not in list(inventory.keys()):
@@ -57,13 +62,10 @@ def _add_group(inventory, group_name, children, group_vars):
         inventory[group_name]["children"] = children
         inventory[group_name]["vars"] = group_vars
 
+
 def _init_inventory():
-    return {
-        "all": _init_group(),
-        "_meta": {
-            "hostvars": {}
-        }
-    }
+    return {"all": _init_group(), "_meta": {"hostvars": {}}}
+
 
 def _handle_host(attrs, inventory):
     host_vars = _extract_dict(attrs, "vars")
@@ -75,12 +77,14 @@ def _handle_host(attrs, inventory):
 
     _add_host(inventory, hostname, groups, host_vars)
 
+
 def _handle_group(attrs, inventory):
     group_vars = _extract_dict(attrs, "vars")
     children = _extract_list(attrs, "children")
     group_name = attrs["inventory_group_name"]
 
     _add_group(inventory, group_name, children, group_vars)
+
 
 def _walk_state(tfstate, inventory):
     for module in tfstate["modules"]:
@@ -97,23 +101,37 @@ def _walk_state(tfstate, inventory):
 
     return inventory
 
+
 def _execute_shell():
-    encoding = 'utf-8'
-    tf_workspace = [TERRAFORM_PATH, 'workspace', 'select', TERRAFORM_WS_NAME]
-    proc_ws = Popen(tf_workspace, cwd=TERRAFORM_DIR, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    encoding = "utf-8"
+    tf_workspace = [TERRAFORM_PATH, "workspace", "select", TERRAFORM_WS_NAME]
+    proc_ws = Popen(
+        tf_workspace,
+        cwd=TERRAFORM_DIR,
+        stdout=PIPE,
+        stderr=PIPE,
+        universal_newlines=True,
+    )
     out_ws, err_ws = proc_ws.communicate()
-    if err_ws != '':
-        sys.stderr.write(str(err_ws)+'\n')
+    if err_ws != "":
+        sys.stderr.write(str(err_ws) + "\n")
         sys.exit(1)
     else:
-        tf_command = [TERRAFORM_PATH, 'state', 'pull', '-input=false']
-        proc_tf_cmd = Popen(tf_command, cwd=TERRAFORM_DIR, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        tf_command = [TERRAFORM_PATH, "state", "pull", "-input=false"]
+        proc_tf_cmd = Popen(
+            tf_command,
+            cwd=TERRAFORM_DIR,
+            stdout=PIPE,
+            stderr=PIPE,
+            universal_newlines=True,
+        )
         out_cmd, err_cmd = proc_tf_cmd.communicate()
-        if err_cmd != '':
-            sys.stderr.write(str(err_cmd)+'\n')
+        if err_cmd != "":
+            sys.stderr.write(str(err_cmd) + "\n")
             sys.exit(1)
         else:
-            return json.loads(out_cmd, encoding='utf-8')
+            return json.loads(out_cmd, encoding="utf-8")
+
 
 def _main():
     try:
@@ -121,8 +139,9 @@ def _main():
         inventory = _walk_state(tfstate, _init_inventory())
         sys.stdout.write(json.dumps(inventory, indent=2))
     except Exception as e:
-        sys.stderr.write(str(e)+'\n')
+        sys.stderr.write(str(e) + "\n")
         sys.exit(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     _main()
